@@ -1,3 +1,3 @@
 Git Teste
 
-Este é um repositório teste.
+Este é um repositório teste para aprender GIT.
