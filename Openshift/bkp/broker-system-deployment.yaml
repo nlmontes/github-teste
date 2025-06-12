@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: broker-system
+  name: broker-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: broker-system
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: broker-system
+    spec:
+      containers:
+        - name: broker-system
+          image: nlmontes/broker-system
+          ports:
+            - containerPort: 8090
+          env:
+            - name: CAMEL_ACTIVEMQ_BROKER_URL
+              value: tcp://activemq:61616
+            - name: SPRING_ACTIVEMQ_BROKER_URL
+              value: tcp://activemq:61616
+            - name: SPRING_ACTIVEMQ_USER
+              value: "admin"
+            - name: SPRING_ACTIVEMQ_PASSWORD
+              value: "admin"
+          volumeMounts:
+            - name: app-logs-volume
+              mountPath: /logs
+      restartPolicy: Always
+      volumes:
+        - name: app-logs-volume
+          persistentVolumeClaim:
+            claimName: broker-system-logs-pvc

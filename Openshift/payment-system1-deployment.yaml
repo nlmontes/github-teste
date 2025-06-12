@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: payment-system1
+  name: payment-system1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-system1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: payment-system1
+    spec:
+      containers:
+        - name: payment-system1
+          image: nlmontes/payment-system1:pilot2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7070
+          env:
+            - name: BROKER_URL
+              value: http://broker-service:8090
+            - name: BROKER_URL_FULL
+              value: http://broker-service:8090/camel/pps-in
+            - name: CAMEL_ACTIVEMQ_BROKER_URL
+              value: tcp://activemq:61616
+            - name: SPRING_ACTIVEMQ_BROKER_URL
+              value: tcp://activemq:61616
+            - name: SPRING_ACTIVEMQ_USER
+              value: "admin"
+            - name: SPRING_ACTIVEMQ_PASSWORD
+              value: "admin"
+          volumeMounts:
+            - name: app-logs-volume
+              mountPath: /logs
+      restartPolicy: Always
+      volumes:
+        - name: app-logs-volume
+          emptyDir: {}

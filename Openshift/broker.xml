@@ -1,0 +1,149 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: broker-config
+  labels:
+    app: activemq
+data:
+  broker.xml: |
+    <configuration xmlns="urn:activemq:core">
+      <core>
+        <name>broker</name>
+
+        <persistence-enabled>true</persistence-enabled>
+        <journal-directory>data/journal</journal-directory>
+
+        <acceptors>
+          <acceptor name="internal">tcp://0.0.0.0:61616?protocols=CORE,AMQP,OPENWIRE</acceptor>
+        </acceptors>
+
+        <connectors>
+          <!-- Updated for OpenShift internal DNS -->
+          <connector name="artemis">tcp://activemq:61616</connector>
+        </connectors>
+
+        <addresses>
+          <!-- Original input queues -->
+          <address name="pps.in.jms">
+            <anycast>
+              <queue name="pps.in.jms"/>
+            </anycast>
+          </address>
+          <address name="pps.in.rest">
+            <anycast>
+              <queue name="pps.in.rest"/>
+            </anycast>
+          </address>
+          <address name="fcs.in.jms">
+            <anycast>
+              <queue name="fcs.in.jms"/>
+            </anycast>
+          </address>
+          <address name="fcs.in.rest">
+            <anycast>
+              <queue name="fcs.in.rest"/>
+            </anycast>
+          </address>
+
+          <!-- Original output queues -->
+          <address name="pps.out.jms">
+            <anycast>
+              <queue name="pps.out.jms"/>
+            </anycast>
+          </address>
+          <address name="pps.out.rest">
+            <anycast>
+              <queue name="pps.out.rest"/>
+            </anycast>
+          </address>
+          <address name="fcs.out.jms">
+            <anycast>
+              <queue name="fcs.out.jms"/>
+            </anycast>
+          </address>
+          <address name="fcs.out.rest">
+            <anycast>
+              <queue name="fcs.out.rest"/>
+            </anycast>
+          </address>
+          <address name="audit.logs">
+            <anycast>
+              <queue name="audit.logs"/>
+            </anycast>
+          </address>
+
+          <!-- Processed/mirrored queues -->
+          <address name="routing.payment.json">
+            <anycast>
+              <queue name="message.jms.json"/>
+            </anycast>
+          </address>
+          <address name="routing.payment1.json">
+            <anycast>
+              <queue name="message.rest.json"/>
+            </anycast>
+          </address>
+          <address name="routing.payment.xml">
+            <anycast>
+              <queue name="message.jms.xml"/>
+            </anycast>
+          </address>
+          <address name="routing.payment1.xml">
+            <anycast>
+              <queue name="message.rest.xml"/>
+            </anycast>
+          </address>
+        </addresses>
+
+        <diverts>
+          <!-- Mirror messages from original queues to audit queues -->
+          <divert name="divert-process-payment">
+            <address>pps.out.jms</address>
+            <forwarding-address>routing.payment.json</forwarding-address>
+            <exclusive>false</exclusive>
+          </divert>
+          <divert name="divert-process-payment1">
+            <address>pps.out.rest</address>
+            <forwarding-address>routing.payment1.json</forwarding-address>
+            <exclusive>false</exclusive>
+          </divert>
+          <divert name="divert-process-fraud-jms">
+            <address>fcs.in.jms</address>
+            <forwarding-address>routing.payment.xml</forwarding-address>
+            <exclusive>false</exclusive>
+          </divert>
+          <divert name="divert-process-fraud-rest">
+            <address>fcs.in.rest</address>
+            <forwarding-address>routing.payment1.xml</forwarding-address>
+            <exclusive>false</exclusive>
+          </divert>
+        </diverts>
+
+        <security-settings>
+          <security-setting match="#">
+            <permission type="createNonDurableQueue" roles="admin"/>
+            <permission type="deleteNonDurableQueue" roles="admin"/>
+            <permission type="createDurableQueue" roles="admin"/>
+            <permission type="deleteDurableQueue" roles="admin"/>
+            <permission type="send" roles="admin"/>
+            <permission type="consume" roles="admin"/>
+            <permission type="browse" roles="admin"/>
+            <permission type="manage" roles="admin"/>
+            <permission type="createAddress" roles="admin"/> <!-- ✅ This line is critical -->
+          </security-setting>
+        </security-settings>
+
+        <address-settings>
+          <address-setting match="#">
+            <dead-letter-address>DLQ</dead-letter-address>
+            <expiry-address>ExpiryQueue</expiry-address>
+            <max-size-bytes>10485760</max-size-bytes>
+            <message-counter-history-day-limit>10</message-counter-history-day-limit>
+            <address-full-policy>PAGE</address-full-policy>
+            <auto-create-queues>true</auto-create-queues>
+            <auto-create-addresses>true</auto-create-addresses>
+            <auto-create-jms-queues>true</auto-create-jms-queues>
+          </address-setting>
+        </address-settings>
+      </core>
+    </configuration>
