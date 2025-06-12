@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: payment-system
-          image: nlmontes/payment-system:prod
+          image: nlmontes/payment-system:prod1
           imagePullPolicy: Always
           ports:
             - containerPort: 9090
