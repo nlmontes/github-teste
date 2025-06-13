@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Namespace (change if needed)
-namespace=default
+namespace=nlmontes14-dev
 
 # Services and their pod name prefixes
 declare -A service_prefixes=(
