@@ -1,0 +1,13 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: payment-system1
+spec:
+  host: payment-system1-nlmontes14-dev.apps.rm1.0a51.p1.openshiftapps.com
+  to:
+    kind: Service
+    name: payment-system1
+  port:
+    targetPort: 7070
+  tls:
+    termination: edge

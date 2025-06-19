@@ -1,0 +1,12 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: activemq-console
+spec:
+  to:
+    kind: Service
+    name: activemq
+  port:
+    targetPort: web
+  tls:
+    termination: edge

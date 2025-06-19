@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activemq
+  labels:
+    app: activemq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq
+  template:
+    metadata:
+      labels:
+        app: activemq
+    spec:
+      containers:
+        - name: activemq
+          image: registry.redhat.io/amq7/amq-broker
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: activemq-broker-secret
+          ports:
+            - containerPort: 61616 # JMS
+            - containerPort: 8161 # Web Console
+          env:
+            - name: ACTIVEMQ_OPTS
+              value: "-Djetty.host=0.0.0.0"
+          volumeMounts:
+            - name: activemq-data
+              mountPath: /opt/activemq/data
+            - name: broker-xml-volume
+              mountPath: /opt/amq/conf/broker.xml
+              subPath: broker.xml
+      volumes:
+        - name: activemq-data
+          emptyDir: {}
+        - name: broker-xml-volume
+          configMap:
+            name: broker-config

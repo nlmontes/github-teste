@@ -1,0 +1,59 @@
+.terraform:apply:
+  stage: terraform
+  image: hashicorp/terraform:1.6
+  before_script:
+    # Find available environment tfvars files dynamically
+    - export TF_ENV=$(ls deployment/terraform/envs/*.tfvars | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' | head -n1)
+
+    # Ensure `TF_ENV` is set before proceeding
+    - if [ -z "$TF_ENV" ]; then echo "No environment found! Exiting..."; exit 1; fi
+
+    # Set kubeconfig based on detected environment
+    - echo "$KUBECONFIG_CONTENT" > deployment/terraform/envs/kubeconfig-$TF_ENV
+    - export KUBECONFIG=$CI_PROJECT_DIR/deployment/terraform/envs/kubeconfig-$TF_ENV
+
+    # Initialize Terraform and select/create the workspace
+    - terraform init deployment/terraform/
+    - terraform workspace select $TF_ENV || terraform workspace new $TF_ENV
+  script:
+    - terraform plan -var-file=deployment/terraform/envs/$TF_ENV.tfvars deployment/terraform/
+    - terraform apply -auto-approve -var-file=deployment/terraform/envs/$TF_ENV.tfvars deployment/terraform/
+  only:
+    - main
+  artifacts:
+    paths:
+      - deployment/terraform/envs/kubeconfig-$TF_ENV
+    expire_in: 1h
+
+.deploy:service:
+  stage: deploy
+  image: docker:24.0.7
+  services:
+    - docker:24.0.7-dind
+  before_script:
+    # Detect available environment dynamically
+    - export TF_ENV=$(ls deployment/terraform/envs/*.tfvars | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' | head -n1)
+
+    - if [ -z "$TF_ENV" ]; then echo "No environment found! Exiting..."; exit 1; fi
+
+    # Set kubeconfig for detected environment
+    - echo "$KUBECONFIG_CONTENT" > deployment/terraform/envs/kubeconfig-$TF_ENV
+    - export KUBECONFIG=$CI_PROJECT_DIR/deployment/terraform/envs/kubeconfig-$TF_ENV
+
+    # Install OpenShift CLI and login
+    - apk add --no-cache curl bash tar gzip
+    - curl -LO "https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz"
+    - tar -xzf oc.tar.gz && mv oc /usr/local/bin/
+    - oc login --token="$OPENSHIFT_TOKEN" --server="$OPENSHIFT_SERVER"
+    - oc project "$OPENSHIFT_PROJECT"
+
+    # Log in to Docker Hub
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+  script:
+    - echo "Deploying $CI_PROJECT_NAME:$IMAGE_TAG via Helm..."
+    - helm upgrade --install $HELM_RELEASE $HELM_CHART_PATH \
+      --set image.repository=$DOCKER_HUB_USERNAME/$CI_PROJECT_NAME \
+      --set image.tag=$IMAGE_TAG \
+      --namespace $OPENSHIFT_PROJECT
+  only:
+    - main
